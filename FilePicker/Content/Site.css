@@ -1,0 +1,65 @@
+﻿.mainBody {
+    position: absolute;
+    left: 96px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.leftNav {
+    position: absolute;
+    width: 96px;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background-color: #0072c6;
+}
+
+.nav-icon {
+    width: 96px;
+    height: 96px;
+    cursor: pointer;
+}
+
+.onedrive {
+    background-image: url(../Images/OneDrive.png);
+}
+
+.onedrive.selected {
+    background-image: url(../Images/OneDrive_selected.png);
+}
+
+.sites {
+    background-image: url(../Images/site.png);
+}
+
+.sites.selected {
+    background-image: url(../Images/site_selected.png);
+}
+
+#spinner-background {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: #000;
+    opacity: 0.25;
+    z-index: 300;
+}
+
+#spinner-16point {
+    position: absolute;
+    height: 64px;
+    width: 64px;
+    left: 50%;
+    margin-left: -32px;
+    top: 50%;
+    margin-top: -32px;
+}
+
+.button-footer {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+}

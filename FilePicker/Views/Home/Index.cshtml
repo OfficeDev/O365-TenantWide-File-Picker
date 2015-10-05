@@ -1,0 +1,47 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="jumbotron">
+    <h1>Filepicker</h1>
+    <p class="lead">This site allows you to test the search-driven Office 365 file picker.</p>
+    <p><a href="javascript:pick();" class="btn btn-primary btn-lg">Pick Files</a></p>
+    <div style="height: 200px; width: 100%; border: 1px solid #333; background-color: #fff; overflow-x: hidden; overflow-y: auto;" id="json"></div>
+</div>
+
+<div class="jumbotron" style="background-color: #fff;">
+    <h2>Using the FilePicker</h2>
+    <p>1. Reference the script:</p>
+    <div style="width: 100%; border: 1px solid #333; background-color: #fff; overflow-x: hidden; overflow-y: auto;" id="json">
+        &lt;script src="https://localhost:44300/Scripts/filepicker.js"&gt;&lt;/script&gt;
+    </div>
+    <br />
+    <p>2. Invoke FilePicker.Open with details and callbacks:</p>
+    <div style="width: 100%; border: 1px solid #333; background-color: #fff; overflow-x: hidden; overflow-y: auto;" id="json">
+        FilePicker.Open(<br />
+        &nbsp;&nbsp;&nbsp;{ LinkType: "real", MultiSelect: true, FolderSelect: false },<br />
+        &nbsp;&nbsp;&nbsp;function (result) {<br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;//handle data back from picker<br />
+        &nbsp;&nbsp;&nbsp;},<br />
+        &nbsp;&nbsp;&nbsp;function (result) {<br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;//handle cancel<br />
+        &nbsp;&nbsp;&nbsp;}<br />
+        );
+    </div>
+</div>
+@section Scripts {
+    <script src="https://localhost:44300/Scripts/filepicker.js"></script>
+    <script type="text/javascript">
+        function pick() {
+            FilePicker.Open(
+                { LinkType: "real", MultiSelect: true, FolderSelect: false },
+                function (result) {
+                    $("#json").html(JSON.stringify(result));
+                },
+                function (result) {
+                    $("#json").html(JSON.stringify(result));
+                }
+            );
+        }
+    </script>
+}
