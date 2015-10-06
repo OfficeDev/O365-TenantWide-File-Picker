@@ -7,8 +7,8 @@
     <div id="spinner-16point" ng-show="waiting"></div>
     <div id="spinner-background" ng-show="waiting"></div>
     <div class="leftNav" style="padding-top: 20px;">
-        <div class="nav-icon onedrive" data-root="Sites" ng-class="{'selected': activeNav == 'OneDrive'}" ng-click="toggleNav('OneDrive')"></div>
-        <div class="nav-icon sites" data-root="OneDrive" ng-class="{'selected': activeNav == 'Sites'}" ng-click="toggleNav('Sites')"></div>
+        <div class="nav-icon onedrive" data-root="Sites" ng-class="{'selected': active_view == 'OneDrive'}" ng-click="toggleNav('OneDrive')"></div>
+        <div class="nav-icon sites" data-root="OneDrive" ng-class="{'selected': active_view == 'Sites'}" ng-click="toggleNav('Sites')"></div>
     </div>
     <div class="mainBody">
         <h2 style="padding-left: 10px;" id="header"><span ng-repeat="part in breadcrumb" ng-click="breadnav(part, $index)"><span class="breadcrumb-link">{{part.name}}</span><span ng-show="$index < breadcrumb.length - 1"> > </span></span></h2>

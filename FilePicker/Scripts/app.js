@@ -5,15 +5,20 @@
         $scope.items = [];
         $scope.searchTerms = "";
         $scope.waiting = true;
-        $scope.activeNav = "OneDrive";
+        $scope.active_view = "OneDrive";
         $scope.breadcrumb = [{ name: "OneDrive", id: null, type: "root", path: null }];
 
+        //toggles between OneDrive view and Sites View
         $scope.toggleNav = function (item) {
-            if ($scope.activeNav === item)
+            //ignore clicks on the active item
+            if ($scope.active_view === item)
                 return;
 
-            $scope.activeNav = item;
+            //set the active_view and start waiting
+            $scope.active_view = item;
             $scope.waiting = true;
+
+            //check id this is OneDrive or Sites
             if (item === "OneDrive") {
                 $scope.breadcrumb = [{ name: "OneDrive", id: null, type: "root", path: null }];
                 queryOneDrive(null);
@@ -24,61 +29,69 @@
             }
         };
 
+        //handles navigation back to an item in the breadcrumb
         $scope.breadnav = function (item, index) {
+            //ignore clicks on current breadcrumb level
             if (index === $scope.breadcrumb.length - 1)
                 return;
 
+            //start waiting and determine if this is reset or middle breadcrumb
             $scope.waiting = true;
             if (index === 0) {
-                if ($scope.breadcrumb[0].name === "OneDrive")
+                //reset based on the activeview
+                if ($scope.active_view === "OneDrive")
                     queryOneDrive(null);
                 else
                     querySites();
             }
             else {
-                if ($scope.breadcrumb[0].name === "OneDrive")
+                //navigate based on the activeview
+                if ($scope.active_view === "OneDrive")
                     queryOneDrive(item.id);
                 else if (item.type !== "lib")
                     querySite(item.path);
                 else
-                    return;
+                    queryLib(item.path, null);
             }
 
-            //update breadcrumb
+            //update breadcrumb by removing ends
             while (index < $scope.breadcrumb.length - 1)
                 $scope.breadcrumb.pop();
         };
 
+        //handles the item clicked event
         $scope.clicked = function (item) {
+            //for files we just toggle the selected flag
             if (item.type === "File") {
                 item.selected = !item.selected;
                 return;
             }
-            //start spinner
+
+            //start waiting
             $scope.waiting = true;
 
+            //handle click based on type
             if (item.type === "Site") {
+                //this is a site/web
                 $scope.breadcrumb.push({ name: item.name, id: item.id, type: item.type, path: item.path });
                 querySite(item.path);
             }
             else if (item.type === "lib") {
+                //this is a library
                 $scope.breadcrumb.push({ name: item.name, id: item.id, type: item.type, path: item.path });
                 queryLib(item.path, null);
             }
             else {
-                //add to breadcrumb and perform query
+                //this is a folder
                 $scope.breadcrumb.push({ name: item.name, id: item.id, type: item.type, path: item.path });
-                queryOneDrive(item.id);
+                if ($scope.active_view === "OneDrive")
+                    queryOneDrive(item.id);
+                else
+                    queryLib(item.path, item.id)
             }
         };
-
-        //$scope.reset = function () {
-        //    $scope.waiting = true;
-        //    doSearch("(ContentTypeId:0x0101* AND (SecondaryFileExtension=mp4 OR SecondaryFileExtension=png OR SecondaryFileExtension=gif OR SecondaryFileExtension=jpg OR SecondaryFileExtension=jpeg))");
-        //};
-
         
-
+        //queries OneDrive
         var queryOneDrive = function (id) {
             //build query based on id
             var query = "";
@@ -113,12 +126,13 @@
             });
         };
 
+        //queries a library
         var queryLib = function (path, id) {
             //build query based on id
             if (id === null)
                 path += "/files";
             else
-                path += id + "/files";
+                path += "/children";
 
             //perform query
             $scope.items = [];
@@ -128,7 +142,7 @@
             .success(function (data) {
                 $(data.value).each(function (i, e) {
                     if (e["odata.type"] === "MS.FileServices.Folder")
-                        $scope.items.push({ "name": e.Name, "type": "Folder", "id": e.Id, extension: "folder", path: e.Url });
+                        $scope.items.push({ "name": e.Name, "type": "Folder", "id": e.Id, extension: "folder", path: e["odata.id"] });
                     else if (e["odata.type"] === "MS.FileServices.File") {
                         //get the file extension
                         var ext = e.Name.substring(e.Name.lastIndexOf(".") + 1).toLowerCase();
@@ -146,6 +160,7 @@
             });
         };
 
+        //queries all site collections the user has access to
         var querySites = function () {
             //perform sharepoint search to locate sites collections the user has access to
             $scope.items = [];
@@ -164,6 +179,7 @@
             });
         };
 
+        //queries a site
         var querySite = function (path) {
             $scope.items = [];
 
@@ -197,24 +213,7 @@
             });
         };
 
-        //var doSearch = function (query) {
-        //    $scope.items = [];
-        //    $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.rootToken;
-        //    $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
-        //    $http.get(auth_details.rootEndpoint + "/search/query?querytext='" + query + "'&trimduplicates=true&rowlimit=50&SelectProperties='Title,Path,Name,SecondaryFileExtension,Filename,Size,SiteTitle,PictureUrl'")
-        //    .success(function (data) {
-        //        $(data.PrimaryQueryResult.RelevantResults.Table.Rows).each(function (i, e) {
-        //            $scope.items.push(parseRow(e));
-        //        });
-
-        //        $scope.waiting = false;
-        //    })
-        //    .error(function (err) {
-        //        //TODO
-        //    });
-        //};
-
-        //????
+        //parses a search result into a flat row
         var parseRow = function (row) {
             var item = { selected: false };
             item.type = "Site";
@@ -257,7 +256,7 @@
 })();
 
 
-
+//these are all office fabric events
 var fabric = fabric || {};
 fabric.Spinner = function (holderElement, spinnerType) {
 
