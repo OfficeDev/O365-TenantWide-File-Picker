@@ -63,3 +63,28 @@
     bottom: 20px;
     right: 20px;
 }
+
+.picker-item {
+    cursor: pointer;
+}
+
+.ms-ListItem {
+    padding-right: 0;
+}
+
+.ms-ListItem-primaryText {
+    padding-right: 0;
+}
+
+.ms-ListItem-secondaryText, .ms-ListItem-tertiaryText {
+    padding-right: 0;
+}
+
+.breadcrumb-link {
+    color: #0072c6;
+    cursor: pointer;
+}
+
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}

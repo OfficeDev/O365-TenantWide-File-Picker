@@ -11,16 +11,14 @@
         <div class="nav-icon sites" data-root="OneDrive" ng-class="{'selected': activeNav == 'Sites'}" ng-click="toggleNav('Sites')"></div>
     </div>
     <div class="mainBody">
-        <h2 style="padding-left: 10px;" id="header">{{breadcrumb}}</h2>
+        <h2 style="padding-left: 10px;" id="header"><span ng-repeat="part in breadcrumb" ng-click="breadnav(part, $index)"><span class="breadcrumb-link">{{part.name}}</span><span ng-show="$index < breadcrumb.length - 1"> > </span></span></h2>
         <div class="row">
             <div class="col-xs-12">
                 <div class="ms-List ms-List--grid">
-                    <div class="ms-ListItem ms-ListItem--image is-selectable" ng-class="{'is-selected': item.selected}" ng-repeat="item in items" ng-click="toggle(item)">
-                        <div class="ms-ListItem-image" style="padding: 3px;"><img src="~/Images/{{item.Extension}}.png" style="width: 60px; height: 60px;" /></div>
-                        <span class="ms-ListItem-primaryText">{{item.Filename}}</span>
-                        <span class="ms-ListItem-secondaryText">{{item.SiteTitle}}</span>
-                        <span class="ms-ListItem-tertiaryText">{{item.Path}}</span>
-                        <span class="ms-ListItem-metaText">{{item.Size}}</span>
+                    <div class="ms-ListItem ms-ListItem--image picker-item" ng-class="{'is-selected': item.selected, 'is-selectable': item.type == 'File'}" ng-repeat="item in items" ng-click="clicked(item)">
+                        <div class="ms-ListItem-image"><img src="~/Images/{{item.extension}}.png" style="width: 65px; height: 65px;" /></div>
+                        <span class="ms-ListItem-primaryText">{{item.name}}</span>
+                        <span class="ms-ListItem-tertiaryText">{{item.path}}</span>
                         <div class="ms-ListItem-selectionTarget js-toggleSelection"></div>
                     </div>
                 </div>

@@ -6,50 +6,152 @@
         $scope.searchTerms = "";
         $scope.waiting = true;
         $scope.activeNav = "OneDrive";
-        $scope.breadcrumb = "OneDrive";
+        $scope.breadcrumb = [{ name: "OneDrive", id: null, type: "root", path: null }];
 
         $scope.toggleNav = function (item) {
+            if ($scope.activeNav === item)
+                return;
+
             $scope.activeNav = item;
-            $scope.breadcrumb = item;
-        };
-
-        $scope.toggle = function (item) {
-            item.selected = !item.selected;
-        };
-
-        $scope.search = function () {
-            if (event.key === "Enter") {
-                $scope.waiting = true;
-                doSearch("(" + $scope.searchTerms + " AND (ContentTypeId:0x0101* AND (SecondaryFileExtension=mp4 OR SecondaryFileExtension=png OR SecondaryFileExtension=gif OR SecondaryFileExtension=jpg OR SecondaryFileExtension=jpeg)))");
+            $scope.waiting = true;
+            if (item === "OneDrive") {
+                $scope.breadcrumb = [{ name: "OneDrive", id: null, type: "root", path: null }];
+                queryOneDrive(null);
+            }
+            else {
+                $scope.breadcrumb = [{ name: "Sites", id: null, type: "root", path: null }];
+                querySites();
             }
         };
 
-        $scope.reset = function () {
+        $scope.breadnav = function (item, index) {
+            if (index === $scope.breadcrumb.length - 1)
+                return;
+
             $scope.waiting = true;
-            doSearch("(ContentTypeId:0x0101* AND (SecondaryFileExtension=mp4 OR SecondaryFileExtension=png OR SecondaryFileExtension=gif OR SecondaryFileExtension=jpg OR SecondaryFileExtension=jpeg))");
+            if (index === 0) {
+                if ($scope.breadcrumb[0].name === "OneDrive")
+                    queryOneDrive(null);
+                else
+                    querySites();
+            }
+            else {
+                if ($scope.breadcrumb[0].name === "OneDrive")
+                    queryOneDrive(item.id);
+                else if (item.type !== "lib")
+                    querySite(item.path);
+                else
+                    return;
+            }
+
+            //update breadcrumb
+            while (index < $scope.breadcrumb.length - 1)
+                $scope.breadcrumb.pop();
         };
 
-        $scope.ok = function () {
-            var data = { action: "result", files: [] };
-            $($scope.items).each(function (i, e) {
-                if (e.selected) {
-                    data.files.push(e);
-                }
+        $scope.clicked = function (item) {
+            if (item.type === "File") {
+                item.selected = !item.selected;
+                return;
+            }
+            //start spinner
+            $scope.waiting = true;
+
+            if (item.type === "Site") {
+                $scope.breadcrumb.push({ name: item.name, id: item.id, type: item.type, path: item.path });
+                querySite(item.path);
+            }
+            else if (item.type === "lib") {
+                $scope.breadcrumb.push({ name: item.name, id: item.id, type: item.type, path: item.path });
+                queryLib(item.path, null);
+            }
+            else {
+                //add to breadcrumb and perform query
+                $scope.breadcrumb.push({ name: item.name, id: item.id, type: item.type, path: item.path });
+                queryOneDrive(item.id);
+            }
+        };
+
+        //$scope.reset = function () {
+        //    $scope.waiting = true;
+        //    doSearch("(ContentTypeId:0x0101* AND (SecondaryFileExtension=mp4 OR SecondaryFileExtension=png OR SecondaryFileExtension=gif OR SecondaryFileExtension=jpg OR SecondaryFileExtension=jpeg))");
+        //};
+
+        
+
+        var queryOneDrive = function (id) {
+            //build query based on id
+            var query = "";
+            if (id === null)
+                query = "/files";
+            else
+                query = "/files/" + id + "/children";
+
+            //perform query
+            $scope.items = [];
+            $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.myToken;
+            $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
+            $http.get(auth_details.myEndpoint + query)
+            .success(function (data) {
+                $(data.value).each(function (i, e) {
+                    if (e.type === "Folder")
+                        $scope.items.push({ "name": e.name, "type": e.type, "id": e.id, extension: "folder", path: e.webUrl });
+                    else if (e.type === "File") {
+                        //get the file extension
+                        var ext = e.name.substring(e.name.lastIndexOf(".") + 1).toLowerCase();
+                        
+                        //only add media files
+                        if (ext === "png" || ext === "gif" || ext === "jpg" || ext === "jpeg" || ext === "mp4") {
+                            $scope.items.push({ "name": e.name, "type": e.type, "id": e.id, extension: ext, size: e.size, path: e.webUrl });
+                        }
+                    }
+                });
+                $scope.waiting = false;
+            })
+            .error(function (err) {
+                //TODO
             });
-            window.opener.postMessage(JSON.stringify(data), host);
-            window.close();
         };
 
-        $scope.cancel = function () {
-            window.opener.postMessage(JSON.stringify({ action: "cancel", files: null }), host);
-            window.close();
-        };
+        var queryLib = function (path, id) {
+            //build query based on id
+            if (id === null)
+                path += "/files";
+            else
+                path += id + "/files";
 
-        var doSearch = function (query) {
+            //perform query
             $scope.items = [];
             $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.rootToken;
             $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
-            $http.get(auth_details.rootEndpoint + "/search/query?querytext='" + query + "'&trimduplicates=true&rowlimit=50&SelectProperties='Title,Path,Name,SecondaryFileExtension,Filename,Size,SiteTitle,PictureUrl'")
+            $http.get(path)
+            .success(function (data) {
+                $(data.value).each(function (i, e) {
+                    if (e["odata.type"] === "MS.FileServices.Folder")
+                        $scope.items.push({ "name": e.Name, "type": "Folder", "id": e.Id, extension: "folder", path: e.Url });
+                    else if (e["odata.type"] === "MS.FileServices.File") {
+                        //get the file extension
+                        var ext = e.Name.substring(e.Name.lastIndexOf(".") + 1).toLowerCase();
+
+                        //only add media files
+                        if (ext === "png" || ext === "gif" || ext === "jpg" || ext === "jpeg" || ext === "mp4") {
+                            $scope.items.push({ "name": e.Name, "type": "File", "id": e.Id, extension: ext, size: e.Size, path: e.Url });
+                        }
+                    }
+                });
+                $scope.waiting = false;
+            })
+            .error(function (err) {
+                //TODO
+            });
+        };
+
+        var querySites = function () {
+            //perform sharepoint search to locate sites collections the user has access to
+            $scope.items = [];
+            $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.rootToken;
+            $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
+            $http.get(auth_details.rootEndpoint + "/search/query?querytext='contentclass:sts_site'&trimduplicates=true&rowlimit=100&SelectProperties='WebTemplate,Title,Path,SiteLogo'")
             .success(function (data) {
                 $(data.PrimaryQueryResult.RelevantResults.Table.Rows).each(function (i, e) {
                     $scope.items.push(parseRow(e));
@@ -62,25 +164,90 @@
             });
         };
 
+        var querySite = function (path) {
+            $scope.items = [];
+
+            //first get webs
+            $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.rootToken;
+            $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
+            $http.get(path + "/webs")
+            .success(function (webdata) {
+                $(webdata.value).each(function (i, e) {
+                    $scope.items.push({ "name": e.Title, "type": "Site", "id": e.Id, extension: "site", size: null, path: e["odata.id"] });
+                });
+
+                //now get lists
+                $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.rootToken;
+                $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
+                $http.get(path + "/Lists")
+                .success(function (data) {
+                    $(data.value).each(function (i, e) {
+                        if (!e.Hidden && e.BaseTemplate == 101) {
+                            $scope.items.push({ "name": e.Title, "type": "lib", "id": e.id, extension: "lib", size: null, path: e["odata.id"] });
+                        }
+                    });
+                    $scope.waiting = false;
+                })
+                .error(function (err) {
+                    //TODO
+                });
+            })
+            .error(function (err) {
+                //TODO
+            });
+        };
+
+        //var doSearch = function (query) {
+        //    $scope.items = [];
+        //    $http.defaults.headers.common["Authorization"] = "Bearer " + auth_details.rootToken;
+        //    $http.defaults.headers.post["accept"] = "application/json;odata=verbose";
+        //    $http.get(auth_details.rootEndpoint + "/search/query?querytext='" + query + "'&trimduplicates=true&rowlimit=50&SelectProperties='Title,Path,Name,SecondaryFileExtension,Filename,Size,SiteTitle,PictureUrl'")
+        //    .success(function (data) {
+        //        $(data.PrimaryQueryResult.RelevantResults.Table.Rows).each(function (i, e) {
+        //            $scope.items.push(parseRow(e));
+        //        });
+
+        //        $scope.waiting = false;
+        //    })
+        //    .error(function (err) {
+        //        //TODO
+        //    });
+        //};
+
+        //????
         var parseRow = function (row) {
             var item = { selected: false };
+            item.type = "Site";
+            item.extension = "site";
             $(row.Cells).each(function (i, e) {
-                if (e.Key === "Filename")
-                    item.Filename = e.Value;
                 if (e.Key === "Path")
-                    item.Path = e.Value;
-                if (e.Key === "Size")
-                    item.Size = e.Value;
-                if (e.Key === "SiteTitle")
-                    item.SiteTitle = e.Value;
-                else if (e.Key === "SecondaryFileExtension")
-                    item.Extension = e.Value;
+                    item.path = e.Value + "/_api/web";
+                if (e.Key === "Title")
+                    item.name = e.Value;
             });
             return item;
         }
 
         //perform initial search
-        $scope.reset();
+        queryOneDrive(null);
+
+        //event for sending selections back to parent window
+        $scope.ok = function () {
+            var data = { action: "result", files: [] };
+            $($scope.items).each(function (i, e) {
+                if (e.selected) {
+                    data.files.push(e);
+                }
+            });
+            window.opener.postMessage(JSON.stringify(data), host);
+            window.close();
+        };
+
+        //event for canceling the picker and sending cancel action back to parent window
+        $scope.cancel = function () {
+            window.opener.postMessage(JSON.stringify({ action: "cancel", files: null }), host);
+            window.close();
+        };
     }]);
 
     $(document).ready(function () {
@@ -217,70 +384,3 @@ fabric.Spinner = function (holderElement, spinnerType) {
 };
 
 var spin16 = fabric.Spinner(jQuery("#spinner-16point")[0], "sixteen");
-//spin16.start();
-//spin16.stop();
-
-
-
-// Copyright (c) Microsoft. All rights reserved. Licensed under the MIT license. See LICENSE in the project root for license information.
-
-/**
- * SearchBox Plugin
- *
- * Adds basic demonstration functionality to .ms-SearchBox components.
- *
- * @param  {jQuery Object}  One or more .ms-SearchBox components
- * @return {jQuery Object}  The same components (allows for chaining)
- */
-(function ($) {
-    $.fn.SearchBox = function () {
-
-        /** Iterate through each text field provided. */
-        return this.each(function () {
-            // Set cancel to false
-            var cancel = false;
-
-            /** SearchBox focus - hide label and show cancel button */
-            $(this).find('.ms-SearchBox-field').on('focus', function () {
-                /** Hide the label on focus. */
-                $(this).siblings('.ms-SearchBox-label').hide();
-                // Show cancel button by adding is-active class
-                $(this).parent('.ms-SearchBox').addClass('is-active');
-            });
-
-
-            // If cancel button is selected, change cancel value to true
-            $(this).find('.ms-SearchBox-closeButton').on('mousedown', function () {
-                cancel = true;
-            });
-
-            /** Show the label again when leaving the field. */
-            $(this).find('.ms-SearchBox-field').on('blur', function () {
-
-                // If cancel button is selected remove the text and show the label
-                if (cancel == true) {
-                    $(this).val('');
-                    $(this).siblings('.ms-SearchBox-label').show();
-                }
-
-                // Remove is-active class - hides cancel button
-                $(this).parent('.ms-SearchBox').removeClass('is-active');
-
-                /** Only do this if no text was entered. */
-                if ($(this).val().length === 0) {
-                    $(this).siblings('.ms-SearchBox-label').show();
-                }
-
-                // Reset cancel to false
-                cancel = false;
-            });
-
-
-        });
-
-    };
-})(jQuery);
-
-if ($.fn.SearchBox) {
-    $('.ms-SearchBox').SearchBox();
-}
